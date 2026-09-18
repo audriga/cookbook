@@ -180,6 +180,17 @@ SPDX-License-Identifier: AGPL-3.0-only OR AGPL-3.0-or-later
             <NcActionButton
                 v-if="isRecipe"
                 class="action-button"
+                :aria-label="t('cookbook', 'Share by mail')"
+                @click="onShareByMail"
+            >
+                <template #icon>
+                    <EmailIcon :size="20" />
+                </template>
+                {{ t('cookbook', 'Share by mail') }}
+            </NcActionButton>
+            <NcActionButton
+                v-if="isRecipe"
+                class="action-button"
                 :aria-label="t('cookbook', 'Clone recipe')"
                 @click="goToRecipeClone(legacyStore.recipe.id)"
             >
@@ -220,6 +231,7 @@ import PrinterIcon from 'icons/Printer.vue';
 import AbortIcon from 'icons/Close.vue';
 import ContentDuplicateIcon from 'icons/ContentDuplicate.vue';
 import SearchIcon from 'icons/Magnify.vue';
+import EmailIcon from 'icons/Email.vue';
 
 import helpers from 'cookbook/js/helper';
 import {
@@ -329,6 +341,21 @@ const deleteRecipe = async () => {
 
 const printRecipe = () => {
     window.print();
+};
+
+const onShareByMail = () => {
+    // IMPORTANT this compose endpoints json64 parameter is not standard !!!!
+    const jsonldData = JSON.stringify(legacyStore.recipe ?? {});
+    const bytes = new TextEncoder().encode(jsonldData);
+    let binary = '';
+    for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+    }
+    const jsonldBase64 = btoa(binary);
+    const composeUrl =
+        '/index.php/apps/mail/compose?uri=mailto&json64=' +
+        encodeURIComponent(jsonldBase64);
+    window.open(composeUrl, '_blank', 'noopener,noreferrer');
 };
 
 const reloadRecipeEdit = () => {
