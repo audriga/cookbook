@@ -215,6 +215,7 @@ SPDX-License-Identifier: AGPL-3.0-only OR AGPL-3.0-or-later
 <script setup>
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { generateUrl } from '@nextcloud/router';
 import {
     NcActions,
     NcActionButton,
@@ -352,10 +353,8 @@ const onShareByMail = () => {
         binary += String.fromCharCode(byte);
     }
     const jsonldBase64 = btoa(binary);
-    const composeUrl =
-        '/index.php/apps/mail/compose?uri=mailto&json64=' +
-        encodeURIComponent(jsonldBase64);
-    window.open(composeUrl, '_blank', 'noopener,noreferrer');
+    const composeUrl = `${generateUrl('apps/mail/compose')}?uri=mailto&json64=${encodeURIComponent(jsonldBase64)}`;
+    window.location.href = composeUrl;
 };
 
 const reloadRecipeEdit = () => {
