@@ -191,6 +191,17 @@ SPDX-License-Identifier: AGPL-3.0-only OR AGPL-3.0-or-later
             <NcActionButton
                 v-if="isRecipe"
                 class="action-button"
+                :aria-label="t('cookbook', 'Share by talk')"
+                @click="onShareByTalk"
+            >
+                <template #icon>
+                    <MessageIcon :size="20" />
+                </template>
+                {{ t('cookbook', 'Share by talk') }}
+            </NcActionButton>
+            <NcActionButton
+                v-if="isRecipe"
+                class="action-button"
                 :aria-label="t('cookbook', 'Clone recipe')"
                 @click="goToRecipeClone(legacyStore.recipe.id)"
             >
@@ -215,7 +226,9 @@ SPDX-License-Identifier: AGPL-3.0-only OR AGPL-3.0-or-later
 <script setup>
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
+// import { getRequestToken } from '@nextcloud/auth';
 import { generateUrl } from '@nextcloud/router';
+import { getCapabilities } from '@nextcloud/capabilities';
 import {
     NcActions,
     NcActionButton,
@@ -233,6 +246,7 @@ import AbortIcon from 'icons/Close.vue';
 import ContentDuplicateIcon from 'icons/ContentDuplicate.vue';
 import SearchIcon from 'icons/Magnify.vue';
 import EmailIcon from 'icons/Email.vue';
+import MessageIcon from 'icons/Message.vue';
 
 import helpers from 'cookbook/js/helper';
 import {
@@ -345,16 +359,44 @@ const printRecipe = () => {
 };
 
 const onShareByMail = () => {
-    // IMPORTANT this compose endpoints json64 parameter is not standard !!!!
     const jsonldData = JSON.stringify(legacyStore.recipe ?? {});
-    const bytes = new TextEncoder().encode(jsonldData);
-    let binary = '';
-    for (const byte of bytes) {
-        binary += String.fromCharCode(byte);
+    const itemId = Date.now().toString(36);
+
+    // 1. Stage in sessionStorage (using unprefixed itemId directly as the key)
+    sessionStorage.setItem(itemId, JSON.stringify({
+        jsonld: jsonldData,
+    }));
+    // 2. Redirect to Talk picker
+    window.location.href = generateUrl(`/apps/mail/mailto?itemid=${itemId}`);
+
+};
+
+const onShareByTalk = () => {
+    const jsonldData = JSON.stringify(legacyStore.recipe ?? {});
+    // 1. Verify Talk is installed and enabled for the current user
+    function isTalkAvailable() {
+        const caps = getCapabilities();
+        return Boolean(caps?.spreed);
     }
-    const jsonldBase64 = btoa(binary);
-    const composeUrl = `${generateUrl('apps/mail/compose')}?uri=mailto&json64=${encodeURIComponent(jsonldBase64)}`;
-    window.location.href = composeUrl;
+
+    // 2. Verify Talk supports interactive JSON-LD rich cards
+    function isJsonLdSupported() {
+        const caps = getCapabilities();
+        const features = caps?.spreed?.features || [];
+        return features.includes('json-ld-card');
+    }
+
+    const doEnableButton = (isTalkAvailable() && isJsonLdSupported());
+    if (doEnableButton) {
+        const itemId = Date.now().toString(36);
+
+        // 1. Stage in sessionStorage (using unprefixed itemId directly as the key)
+        sessionStorage.setItem(itemId, JSON.stringify({
+            jsonld: jsonldData,
+        }));
+        // 2. Redirect to Talk picker
+        window.location.href = generateUrl(`/apps/spreed/sendto?itemid=${itemId}`);
+    }
 };
 
 const reloadRecipeEdit = () => {
@@ -389,6 +431,7 @@ const goToRecipeClone = (id) => {
 const goToRecipeEdit = (id) => {
     helpers.goTo(`/recipe/${id}/edit`);
 };
+
 </script>
 
 <script>
